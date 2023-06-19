@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <unistd.h>
+#include "exit_code.h"
 #include "interpret.h"
 #include "tape.h"
 
@@ -19,7 +20,7 @@ int push_stack(size_t_stack* s, size_t value) {
         node->value = value;
         node->next = NULL;
     } else {
-        return 1;
+        return EXIT_MEM_ALLOC_FAILED;
     }
 
     if (s->first == NULL) {
@@ -55,7 +56,7 @@ int interpret(char* str, size_t size) {
     char* reduced = malloc(sizeof(char) * size);
 
     if (!reduced) {
-        return 1;
+        return EXIT_MEM_ALLOC_FAILED;
     }
 
     size_t assigned = 0;
@@ -67,7 +68,9 @@ int interpret(char* str, size_t size) {
     size_t_entry* bracket_lookup = malloc(sizeof(size_t_entry) * bracket_lookup_size);
 
     if (!bracket_lookup) {
-        return 1;
+        free(reduced);
+
+        return EXIT_MEM_ALLOC_FAILED;
     }
 
     for (size_t i = 0; i < size; i++) {
@@ -88,6 +91,9 @@ int interpret(char* str, size_t size) {
                 int failed = push_stack(&open_bracket_stack, assigned++);
 
                 if (failed) {
+                    free(bracket_lookup);
+                    free(reduced);
+
                     return failed;
                 }
 
@@ -97,7 +103,10 @@ int interpret(char* str, size_t size) {
                 int is_empty = is_stack_empty(&open_bracket_stack);
 
                 if (is_empty) {
-                    return 2;
+                    free(bracket_lookup);
+                    free(reduced);
+
+                    return EXIT_BRACKETS_MISMATCH;
                 }
 
                 size_t open = pop_stack(&open_bracket_stack);
@@ -106,7 +115,10 @@ int interpret(char* str, size_t size) {
                     void* reallocated = realloc(bracket_lookup, sizeof(size_t_entry) * 2 * bracket_lookup_size);
 
                     if (!reallocated) {
-                        return 1;
+                        free(bracket_lookup);
+                        free(reduced);
+
+                        return EXIT_MEM_ALLOC_FAILED;
                     }
 
                     bracket_lookup = reallocated;
@@ -128,6 +140,9 @@ int interpret(char* str, size_t size) {
     int failed = tape_init(&tape);
 
     if (failed) {
+        free(bracket_lookup);
+        free(reduced);
+
         return failed;
     }
 
@@ -142,10 +157,14 @@ int interpret(char* str, size_t size) {
                 tape_dec(&tape);
                 break;
             case '>': {
-                tape_t* moved_tape = tape_move_right(&tape);
+                int failed = tape_move_right(&tape);
 
-                if (!moved_tape) {
-                    return 1;
+                if (failed) {
+                    free(bracket_lookup);
+                    tape_free(&tape);
+                    free(reduced);
+
+                    return failed;
                 }
                 break;
             }
@@ -153,6 +172,10 @@ int interpret(char* str, size_t size) {
                 int failed = tape_move_left(&tape);
 
                 if (failed) {
+                    free(bracket_lookup);
+                    tape_free(&tape);
+                    free(reduced);
+
                     return failed;
                 }
                 break;
@@ -164,7 +187,11 @@ int interpret(char* str, size_t size) {
                 if (count) {
                     tape_set_value(&tape, c);
                 } else {
-                    return 4;
+                    free(bracket_lookup);
+                    tape_free(&tape);
+                    free(reduced);
+
+                    return EXIT_READ_STDIN_FAILED;
                 }
                 break;
             }
@@ -191,7 +218,11 @@ int interpret(char* str, size_t size) {
                     if (next_operator_at != operator_at) {
                         operator_at = next_operator_at;
                     } else {
-                        return 100;
+                        free(bracket_lookup);
+                        tape_free(&tape);
+                        free(reduced);
+
+                        return EXIT_INTERNAL_SERVER_ERROR;
                     }
                 }
 
@@ -213,7 +244,11 @@ int interpret(char* str, size_t size) {
                     if (next_operator_at != operator_at) {
                         operator_at = next_operator_at;
                     } else {
-                        return 100;
+                        free(bracket_lookup);
+                        tape_free(&tape);
+                        free(reduced);
+
+                        return EXIT_INTERNAL_SERVER_ERROR;
                     }
                 }
 
@@ -223,5 +258,5 @@ int interpret(char* str, size_t size) {
         operator_at++;
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }

@@ -1,4 +1,6 @@
 #include <stdlib.h>
+
+#include "exit_code.h"
 #include "tape.h"
 
 int tape_init(tape_t* t) {
@@ -12,10 +14,10 @@ int tape_init(tape_t* t) {
         t->max_visited = 0;
         t->allocated_size = initial_size;
 
-        return 0;
+        return EXIT_SUCCESS;
     }
 
-    return 1;
+    return EXIT_MEM_ALLOC_FAILED;
 }
 
 void tape_free(tape_t* t) {
@@ -24,14 +26,14 @@ void tape_free(tape_t* t) {
 
 int tape_move_left(tape_t* t) {
     if (t->pointer == 0) {
-        return 10;
+        return EXIT_CANNOT_MOVE_LEFT;
     }
 
     t->pointer--;
-    return 0;
+    return EXIT_SUCCESS;
 }
 
-tape_t* tape_move_right(tape_t* t) {
+int tape_move_right(tape_t* t) {
     if (t->pointer == t->allocated_size - 1) {
         // reallocate
         void* reallocated = realloc(t->buffer, sizeof(unsigned char) * (t->allocated_size * 2));
@@ -41,9 +43,9 @@ tape_t* tape_move_right(tape_t* t) {
             t->buffer = reallocated;
             t->pointer++;
 
-            return t;
+            return EXIT_SUCCESS;
         } else {
-            return NULL;
+            return EXIT_MEM_ALLOC_FAILED;
         }
     } else {
         t->pointer++;
@@ -53,10 +55,10 @@ tape_t* tape_move_right(tape_t* t) {
             t->buffer[t->pointer] = 0;
         }
 
-        return t;
+        return EXIT_SUCCESS;
     }
 
-    return NULL;
+    return EXIT_MEM_ALLOC_FAILED;
 }
 
 unsigned char tape_get_value(tape_t* t) {

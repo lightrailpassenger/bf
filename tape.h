@@ -14,7 +14,7 @@ typedef struct _tape tape_t;
 
 int tape_init(tape_t* t);
 void tape_free(tape_t* t);
-tape_t* tape_move_right(tape_t* t);
+int tape_move_right(tape_t* t);
 int tape_move_left(tape_t* t);
 
 unsigned char tape_get_value(tape_t* t);
